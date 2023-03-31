@@ -1,7 +1,7 @@
 from __future__ import annotations
-
 from typing import Any, Dict, List, Optional
 
+import os
 import torch
 from transformers import (
     AutoModelWithLMHead,
@@ -16,12 +16,12 @@ from mario_gpt.lm.base import BaseMarioLM
 from mario_gpt.prompter import Prompter
 from mario_gpt.sampler import GPTSampler, SampleOutput
 
-PRETRAINED_MODEL_PATH = "shyamsn97/Mario-GPT2-700-context-length"
+MODEL_ID = "shyamsn97/Mario-GPT2-700-context-length"
 
 
 class MarioGPT(BaseMarioLM):
-    PRETRAINED_LM_PATH = PRETRAINED_MODEL_PATH
-    PRETRAINED_TOKENIZER_PATH = PRETRAINED_MODEL_PATH
+    PRETRAINED_LM_PATH = MODEL_ID
+    PRETRAINED_TOKENIZER_PATH = MODEL_ID
 
     BASE_LM_PATH = "distilgpt2"
     BASE_TOKENIZER_PATH = "distilgpt2"
@@ -58,13 +58,15 @@ class MarioGPT(BaseMarioLM):
 
     def load_pretrained_lm(self, path: str, lm_kwargs: Dict[str, Any]) -> GPT2Model:
         return AutoModelWithLMHead.from_pretrained(
-            path, **{**lm_kwargs, "add_cross_attention": True}
+            path, **{**lm_kwargs, "add_cross_attention": True,
+                     "local_files_only": True, }
         )
 
     def load_pretrained_tokenizer(
         self, path: str, tokenizer_kwargs: Dict[str, Any]
     ) -> GPT2Tokenizer:
-        return AutoTokenizer.from_pretrained(path, **tokenizer_kwargs)
+        return AutoTokenizer.from_pretrained(path, **{**tokenizer_kwargs, "add_cross_attention": True,
+                                                      "local_files_only": True, })
 
     def sample(
         self,
@@ -73,10 +75,9 @@ class MarioGPT(BaseMarioLM):
         num_steps: int = 1,
         temperature: float = 2.0,
         encoder_hidden_states: torch.Tensor = None,
-        use_tqdm: bool = False,
         return_tensor: bool = False,
     ) -> SampleOutput:
-        sampler = GPTSampler(self, temperature, 16, self.context_len, use_tqdm)
+        sampler = GPTSampler(self, temperature, 16, self.context_len)
         return sampler(
             seed=seed,
             prompts=prompts,
